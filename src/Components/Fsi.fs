@@ -20,9 +20,10 @@ module Fsi =
 
     let private start () =
         try
+            //window.showInformationMessage ("FSI path: " + Environment.fsi) |> ignore
             fsiProcess |> Option.iter(fun fp -> fp.kill ())
             fsiProcess <-
-                (if Process.isWin () then Process.spawn "Fsi.exe" "" "--fsi-server-input-codepage:65001" else Process.spawn "fsharpi" "" "--fsi-server-input-codepage:65001")
+                (Process.spawn Environment.fsi "" "--fsi-server-input-codepage:65001")
                 |> Process.onExit (fun _ -> fsiOutput |> Option.iter (fun outChannel -> outChannel.clear () ))
                 |> Process.onOutput handle
                 |> Process.onError handle
@@ -53,20 +54,25 @@ module Fsi =
 
         fsiProcess |> Option.iter (fun fp -> fp.stdin.write(msg', "utf-8" |> unbox) |> ignore)
 
+
     let private sendLine () =
         let editor = window.activeTextEditor
         let file = editor.document.fileName
         let pos = editor.selection.start
         let line = editor.document.lineAt pos
         send line.text file
+        commands.executeCommand "cursorDown" |> ignore
 
     let private sendSelection () =
         let editor = window.activeTextEditor
         let file = editor.document.fileName
 
-        let range = Range(editor.selection.anchor.line, editor.selection.anchor.character, editor.selection.active.line, editor.selection.active.character)
-        let text = editor.document.getText range
-        send text file
+        if editor.selection.isEmpty then
+            sendLine ()
+        else
+            let range = Range(editor.selection.anchor.line, editor.selection.anchor.character, editor.selection.active.line, editor.selection.active.character)
+            let text = editor.document.getText range
+            send text file
 
     let private sendFile () =
         let editor = window.activeTextEditor

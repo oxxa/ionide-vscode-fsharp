@@ -1,6 +1,6 @@
 {
   "name": "Ionide-fsharp",
-  "version": "1.9.2",
+  "version": "2.2.4",
   "publisher": "Ionide",
   "description": "F# Language Support",
   "categories": [
@@ -153,7 +153,18 @@
         "command": "fsharp.MoveFileDown",
         "key": "ctrl+shift+down"
       }
-    ]
+    ],
+    "configuration": {
+        "type": "object",
+        "title": "FSharp configuration",
+        "properties": {
+            "FSharp.automaticProjectModification": {
+                "type": "boolean",
+                "default": false,
+                "description": "Automatically modifies fsproj on file add/remove"
+            }
+        }
+    }
   },
   "activationEvents": [
     "onLanguage:fsharp",

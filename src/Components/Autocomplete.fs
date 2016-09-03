@@ -11,32 +11,74 @@ open DTO
 open Ionide.VSCode.Helpers
 
 module Autocomplete =
+
+    [<Literal>]
+    let getWordAtPositionJS =
+        """
+    function getWordAt(str, pos) {
+    str = String(str);
+    pos = Number(pos) >>> 0;
+
+    var left = str.slice(0, pos + 1).search(/\S+$/),
+        right = str.slice(pos).search(/\s/);
+
+    if (right < 0) {
+        return str.slice(left);
+    }
+    return str.slice(left, right + pos);
+}
+getWordAt($0, $1)
+        """
+
+    [<Emit(getWordAtPositionJS)>]
+    let getWordAtPosition(str, post) : string = failwith "JS"
+
     let private createProvider () =
         let provider = createEmpty<CompletionItemProvider>
 
-        let convertToInt code =
+        let convertToKind code =
             match code with
-            | "C" -> 6      (*  CompletionItemKind.Class      *)
-            | "E" -> 12     (*  CompletionItemKind.Enum       *)
-            | "S" -> 6      (*  CompletionItemKind.Value      *)
-            | "I" -> 7      (*  CompletionItemKind.Interface  *)
-            | "N" -> 8      (*  CompletionItemKind.Module     *)
-            | "M" -> 1      (*  CompletionItemKind.Method     *)
-            | "P" -> 9      (*  CompletionItemKind.Property   *)
-            | "F" -> 4      (*  CompletionItemKind.Field      *)
-            | "T" -> 6      (*  CompletionItemKind.Class      *)
-            | _   -> 0
+            | "C" -> CompletionItemKind.Class
+            | "E" -> CompletionItemKind.Enum
+            | "S" -> CompletionItemKind.Value
+            | "I" -> CompletionItemKind.Interface
+            | "N" -> CompletionItemKind.Module
+            | "M" -> CompletionItemKind.Method
+            | "P" -> CompletionItemKind.Property
+            | "F" -> CompletionItemKind.Field
+            | "T" -> CompletionItemKind.Class
+            | "K" -> CompletionItemKind.Keyword
+            | _   -> 0 |> unbox
 
         let mapCompletion (doc : TextDocument) (pos : Position) (o : CompletionResult) =
-            o.Data |> Array.map (fun c ->
-                let range = doc.getWordRangeAtPosition pos
-                let length = if JS.isDefined range then range.``end``.character - range.start.character else 0.
-                let result = createEmpty<CompletionItem>
-                result.kind <- c.GlyphChar |> convertToInt |> unbox
-                result.label <- c.Name
-                result.insertText <- c.ReplacementText
-                result)
-            |> ResizeArray
+            if o |> unbox <> null then
+                o.Data |> Array.choose (fun c ->
+                    let lineStr = doc.getText(Range(pos.line, 0., pos.line, 1000. ))
+                    let word = getWordAtPosition(lineStr, pos.character)
+                    Browser.console.log word
+                    if word <> "" then
+
+                        if word.Contains "." && c.GlyphChar = "K" then
+                            None
+                        else
+                            let range = doc.getWordRangeAtPosition pos
+                            let length = if JS.isDefined range then range.``end``.character - range.start.character else 0.
+                            let result = createEmpty<CompletionItem>
+                            result.kind <- c.GlyphChar |> convertToKind |> unbox
+                            result.label <- c.Name
+                            result.insertText <- c.ReplacementText
+                            Some result
+                    else
+                        let length = 0.
+                        let result = createEmpty<CompletionItem>
+                        result.kind <- c.GlyphChar |> convertToKind |> unbox
+                        result.label <- c.Name
+                        result.insertText <- c.ReplacementText
+                        Some result)
+
+                |> ResizeArray
+            else
+                ResizeArray ()
 
         let mapHelptext (sug : CompletionItem) (o : HelptextResult) =
             let res = (o.Data.Overloads |> Array.fold (fun acc n -> (n |> Array.toList) @ acc ) []).Head
@@ -62,6 +104,6 @@ module Autocomplete =
             }
 
     let activate selector (disposables: Disposable[]) =
-        languages.registerCompletionItemProvider (selector, createProvider())
+        languages.registerCompletionItemProvider (selector, createProvider(), ".")
         |> ignore
         ()
