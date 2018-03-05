@@ -1,7 +1,8 @@
-namespace Ionide.VSCode.FSharp
+module Ionide.VSCode.FSharp.QuickInfo
 
 open System
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.vscode
 open Fable.Import.Node
@@ -9,40 +10,67 @@ open Fable.Import.Node
 open DTO
 open Ionide.VSCode.Helpers
 
-
-module QuickInfo =
-    [<Emit("setTimeout($0,$1)")>]
-    let setTimeout(cb, delay) : obj = failwith "JS Only"
-
-    [<Emit("clearTimeout($0)")>]
-    let clearTimeout(timer) : unit = failwith "JS Only"
-
+module private StatusDisplay =
     let mutable private item : StatusBarItem option = None
+    let private hideItem () = item |> Option.iter (fun n -> n.hide ())
 
-    let private handle' (event : TextEditorSelectionChangeEvent) =
+    let private showItem (text: string) tooltip =
+        item.Value.text <- text
+        item.Value.tooltip <- tooltip
+        item.Value.show()
+
+    let activate (context: ExtensionContext) =
+        item <- Some (window.createStatusBarItem (unbox 1, -10. ))
+        context.subscriptions.Add(item.Value)
+
+    let private getOverloadSignature (textEditor : TextEditor) (selections: ResizeArray<Selection>) = promise {
+        if JS.isDefined textEditor?document then
+            let doc = textEditor.document
+            match doc with
+            | Document.FSharp ->
+                let pos = selections.[0].active
+                let! o = LanguageService.signature (doc.fileName) (int pos.line + 1) (int pos.character + 1)
+                if isNotNull o then
+                    return Some o.Data
+                else
+                    return None
+            | _ -> return None
+        else
+            return None
+    }
+
+    let update (textEditor : TextEditor) (selections: ResizeArray<Selection>) =
         promise {
-            if JS.isDefined event.textEditor?document then
-                let doc = event.textEditor.document
-                let pos = event.selections.[0].active
-                let! o = LanguageService.tooltip (doc.fileName) (int pos.line + 1) (int pos.character + 1)
-                if o |> unbox <> null then
-                    let res = (o.Data |> Array.fold (fun acc n -> (n |> Array.toList) @ acc ) []).Head.Signature
-                    if JS.isDefined res then
-                        let t = res.Split('\n').[0]
-                        item |> Option.iter (fun n -> n.hide ())
-                        let i = window.createStatusBarItem (1 |> unbox, -1.)
-                        i.text <- t
-                        i.tooltip <- res
-                        i.show ()
-                        item <- Some i
-        }
+            let! signature = getOverloadSignature textEditor selections
+            match signature with
+            | Some signature ->
+                showItem signature signature
+            | _ ->
+                hideItem()
+        } |> ignore
 
-    let mutable private timer = None
+    let clear () = update JS.undefined (ResizeArray())
 
-    let private handle (event : TextEditorSelectionChangeEvent) =
-        timer |> Option.iter(clearTimeout)
-        timer <- Some (setTimeout((fun n -> handle' event), 500.) )
+let mutable private timer = None
+let private clearTimer () = timer |> Option.iter(clearTimeout)
 
-    let activate (disposables: Disposable[]) =
-        window.onDidChangeTextEditorSelection $ (handle, (), disposables) |> ignore
-        ()
+let private selectionChanged (event : TextEditorSelectionChangeEvent) =
+    clearTimer()
+    timer <- Some (setTimeout (fun () -> StatusDisplay.update event.textEditor event.selections) 500.)
+
+let private documentClosed (document: TextDocument) =
+    clearTimer()
+    StatusDisplay.clear()
+
+let private documentParsedHandler (event: Errors.DocumentParsedEvent) =
+    if event.document = window.activeTextEditor.document then
+        clearTimer()
+        StatusDisplay.update window.activeTextEditor window.activeTextEditor.selections
+    ()
+
+let activate (context: ExtensionContext) =
+    StatusDisplay.activate context
+
+    context.subscriptions.Add(window.onDidChangeTextEditorSelection.Invoke(unbox selectionChanged))
+    context.subscriptions.Add(workspace.onDidCloseTextDocument.Invoke(unbox documentClosed))
+    context.subscriptions.Add(Errors.onDocumentParsed.Invoke(unbox documentParsedHandler))

@@ -1,84 +1,117 @@
-#Ionide-VSCode: FSharp
+# [Ionide-VSCode: FSharp](https://marketplace.visualstudio.com/items/Ionide.Ionide-fsharp)
+**Enhanced F# Language Features for Visual Studio Code**
 
-Part of the [Ionide](http://ionide.io) plugin suite.
-F# IDE-like possibilities in Atom editor and Visual Studio Code
+_Part of the [Ionide](http://ionide.io) plugin suite._
 
-[![Join the chat at https://gitter.im/ionide/ionide-project](https://img.shields.io/badge/gitter-join%20chat%20%E2%86%92-brightgreen.svg?style=flat-square)](https://gitter.im/ionide/ionide-project?utm_source=share-link&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) --  [Need Help? You can find us on Gitter](https://gitter.im/ionide/ionide-project)
+[![Version](https://vsmarketplacebadge.apphb.com/version/Ionide.Ionide-fsharp.svg)](https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp) [![Installs](https://vsmarketplacebadge.apphb.com/installs-short/Ionide.Ionide-fsharp.svg)](https://marketplace.visualstudio.com/items?itemName=Ionide.Ionide-fsharp)
+[![Join the chat at https://gitter.im/ionide/ionide-project](https://img.shields.io/badge/gitter-join%20chat%20%E2%86%92-brightgreen.svg?style=flat-square)](https://gitter.im/ionide/ionide-project?utm_source=share-link&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-## Features
+# Getting Started
 
-- Better syntax highlighting
-- Auto completions
-- Error highlighting and error list
-- Tooltips
-- Go to Declaration
-- Show symbols in file
-- Highlighting usages
+F# 4.0 needs to be installed on your system in order to use Ionide
 
-## Required software
+For more detailed instructions on installing F# :
 
-* F# >= 3.1
-* MSBuild >= 12
+* [Installing F# on Linux](http://fsharp.org/use/linux/)
+* [Installing F# on OSX](http://fsharp.org/use/mac/)
+* [Installing F# on Windows](http://fsharp.org/use/windows/)
+
+
+**FSC** _(F# Compiler)_ and **FSI/fsharpi** on Mono _(F# Interactive)_ need to be added to your system **PATH**.
+The default location on Windows is
+```
+  64-bit - C:\Program Files (x86)\Microsoft SDKs\F#\4.0\Framework\v4.0\
+  32-bit - C:\Program Files\Microsoft SDKs\F#\4.0\Framework\v4.0
+```
+
+Add **MSBUILD_PATH** environment variable which points to the home of **Microsoft Build Tools**, e.g., `MSBUILD_PATH = C:\Program Files (x86)\MSBuild\14.0\Bin`.
+
+## Quick Install Guide
 
 ### Windows
 
-This can be obtained by installing Visual Studio 2013 / 2015 or downloading:
+[You can download F# 4.0 here for Windows](https://www.microsoft.com/en-us/download/details.aspx?id=48179)
 
-* [Visual F# Tools 3.1.2](http://www.microsoft.com/en-us/download/details.aspx?id=44011)
-* [Microsoft Build Tools 2013](https://www.microsoft.com/en-us/download/details.aspx?id=40760)
+[Install the Microsoft Build Tools 2015](https://www.microsoft.com/en-us/download/details.aspx?id=48159&wa=wsignin1.0)
+
+If you use [chocolatey](https://chocolatey.org/), you can install all the pre-requisites easily:
+
+```batch
+choco install visualfsharptools -y
+choco install microsoft-build-tools --version 14.0.25420.1 -y
+choco install visualstudiocode -y
+```
+
+* Recommended: `dotnet` CLI >= 2.0
 
 ### Mono
 
-* Required: Mono >= 3.10
-* Recommended: Mono >= 4.0.2
+* Required: Mono >= 4.8
+* Recommended: Mono >= 5.2
+* Recommended: `dotnet` CLI >= 2.0
 
-### PATH settings
+## Features
 
-* In case of using Mono version, `mono` must be in PATH.
-* `Fsi.exe` (or `fsharpi`) must be in PATH
+- Syntax highlighting
+- Auto completions
+- Error highlighting, error list, and quick fixes based on errors
+- Tooltips
+- Method parameter hints
+- Go to Definition
+- Peak Definition
+- Find all references
+- Highlighting usages
+- Rename
+- Show symbols in file
+- Find symbol in workspace
+- Show signature in status bar
+- Show signature as CodeLens / LineLens
+- Go to MSDN help
+- Add `open NAMESPACE` for symbol
+- Match case generator
+- Go to #load reference
+- Generate comment for the symbol
+- Integration with F# Interactive
+- Integration with Forge (Project scaffolding and modification)
+- Integration with FSharpLint (additional hints and quick fixes)
+- Integration with Expecto (lightweight F# test runner)
+- Integration with MsBuild (Build, Rebuild, Clean project)
+- Solution / project explorer
 
-More details how to obtain and install F# on different platforms can be found on http://fsharp.org/
+## How to get logs for debugging / issue reporting
 
-## WebPreview
-`WebView` allows the user to override the default conventions used to run and preview web applications. To do so You need to create an `.ionide` file in the root folder of Your project opened by VSCode. The configuration file uses the [TOML](https://github.com/toml-lang/toml) language.
+1. Enable Logging in User settings with
+  ```json
+// FSharp configuration
+    // Set the verbosity for F# Language Service Output Channel
+    "FSharp.logLanguageServiceRequestsOutputWindowLevel": "DEBUG",
 
-Here is the default configuration values used if the `.ionide` file doesn't exist or some entry is missing:
+    // Enable logging language service requests (FSAC)  to an output channel, the developer tools console, or both
+    "FSharp.logLanguageServiceRequests": "both"
+  ```
+2. Open the Output Panel and switch to the `F# Language Service` Channel
+3. Or Toggle Developer Tools (`Help |> Toggle Developer Tools`) and open the console tab
 
-```TOML
-[WebPreview]
-linuxPrefix = "mono"
-command = "packages/FAKE/tools/FAKE.exe"
-host = "localhost"
-port = 8888
-script = "build.fsx"
-build = "Serve"
-startString = "listener started"
-parameters = []
-startingPage = ""
-```
+## How to contribute
 
-* linuxPrefix - command used as prefix on Linux / Mac - usually `sh` or `mono`
+*Imposter syndrome disclaimer*: I want your help. No really, I do.
 
-* command - path to `FAKE.exe`
+There might be a little voice inside that tells you you're not ready; that you need to do one more tutorial, or learn another framework, or write a few more blog posts before you can help me with this project.
 
-* host - address of webpage displayed in WebPreview - usually `localhost`
+I assure you, that's not the case.
 
-* port - port of webpage displayed in WebPreview (also passed to FAKE as environmental variable)
+This project has some clear Contribution Guidelines and expectations that you can [read here](https://github.com/ionide/ionide-vscode-fsharp/blob/master/CONTRIBUTING.md).
 
-* script - FAKE build script passed to FAKE - usually `build.fsx`
+The contribution guidelines outline the process that you'll need to follow to get a patch merged. By making expectations and process explicit, I hope it will make it easier for you to contribute.
 
-* build - FAKE build target executed to start WebPreview
+And you don't just have to write code. You can help out by writing documentation, tests, or even by giving feedback about this work. (And yes, that includes giving feedback about the contribution guidelines.)
 
-* startString - string which needs to be printed out in standard I/O to let know WebPreview to display webpage
+Thank you for contributing!
 
-* parameters - list of parameters passed to FAKE.exe
-
-* startingPage - webpage displayed in WebPreview - usually ` ` or `index.html`
 
 ## Contributing and copyright
 
 The project is hosted on [GitHub](https://github.com/ionide/ionide-vscode-fsharp) where you can [report issues](https://github.com/ionide/ionide-vscode-fsharp/issues), fork
 the project and submit pull requests.
 
-The library is available under [MIT license](https://github.com/ionide/ionide-vscode-fsharp/blob/master/LICENSE.md), which allows modification and
-redistribution for both commercial and non-commercial purposes.
+The library is available under [MIT license](https://github.com/ionide/ionide-vscode-fsharp/blob/master/LICENSE.md), which allows modification and redistribution for both commercial and non-commercial purposes.

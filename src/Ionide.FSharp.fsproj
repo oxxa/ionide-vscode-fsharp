@@ -1,74 +1,65 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <AssemblyName>Ionide.FSharp</AssemblyName>
-    <RootNamespace>Ionide.FSharp</RootNamespace>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
-    <ProjectGuid>d1081029-2369-4daa-9f33-2353c5c9ed02</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>Full</DebugType>
-    <Optimize>false</Optimize>
-    <Tailcalls>false</Tailcalls>
-    <OutputPath>bin\Debug</OutputPath>
-    <DefineConstants>DEBUG</DefineConstants>
-    <PlatformTarget>x86</PlatformTarget>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>None</DebugType>
-    <Optimize>true</Optimize>
-    <Tailcalls>true</Tailcalls>
-    <OutputPath>bin\Release</OutputPath>
-    <PlatformTarget>x86</PlatformTarget>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\paket-files\Ionide\ionide-vscode-helpers\Fable.Import.VSCode.fs">
+    <Compile Include="..\paket-files\ionide\ionide-vscode-helpers\src\Fable.Import.VSCode.fs">
       <Paket>True</Paket>
       <Link>paket-files/Fable.Import.VSCode.fs</Link>
     </Compile>
-    <Compile Include="..\paket-files\Ionide\ionide-vscode-helpers\Helpers.fs">
+    <Compile Include="..\paket-files\ionide\ionide-vscode-helpers\src\Helpers.fs">
       <Paket>True</Paket>
       <Link>paket-files/Helpers.fs</Link>
     </Compile>
-    <Compile Include="..\paket-files\Ionide\ionide-vscode-helpers\Fable.Import.Axios.fs">
+    <Compile Include="..\paket-files\ionide\ionide-vscode-helpers\src\Fable.Import.Axios.fs">
       <Paket>True</Paket>
       <Link>paket-files/Fable.Import.Axios.fs</Link>
     </Compile>
-    <Reference Include="Fable.Core">
-      <HintPath>../release/node_modules/fable-core/Fable.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
+    <Compile Include="..\paket-files\ionide\ionide-vscode-helpers\src\Fable.Import.ws.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Fable.Import.ws.fs</Link>
+    </Compile>
     <None Include="paket.references" />
+    <Compile Include="Imports/Node.Util.fs" />
+    <Compile Include="Core/Logging.fs" />
     <Compile Include="Core/DTO.fs" />
+    <Compile Include="Core/Utils.fs" />
     <Compile Include="Core/LanguageService.fs" />
+    <Compile Include="Core/Environment.fs" />
     <Compile Include="Core/Project.fs" />
-    <Compile Include="Components/Linter.fs" />
     <Compile Include="Components/Tooltip.fs" />
     <Compile Include="Components/Autocomplete.fs" />
     <Compile Include="Components/ParameterHints.fs" />
     <Compile Include="Components/Definition.fs" />
+    <Compile Include="Components/TypeDefinition.fs" />
     <Compile Include="Components/References.fs" />
-    <Compile Include="Components/Symbols.fs" />
     <Compile Include="Components/Highlights.fs" />
+    <Compile Include="Components/Symbols.fs" />
     <Compile Include="Components/Rename.fs" />
     <Compile Include="Components/WorkspaceSymbols.fs" />
-    <Compile Include="Components/Environment.fs" />
+    <Compile Include="Components/SignatureData.fs" />
+    <Compile Include="Components/CodeOutline.fs" />
     <Compile Include="Components/Fsi.fs" />
-    <Compile Include="Components/QuickInfo.fs" />
-    <Compile Include="Components/WebPreview.fs" />
     <Compile Include="Components/Forge.fs" />
+    <Compile Include="Components/Linter.fs" />
+    <Compile Include="Components/UnusedOpens.fs" />
+    <Compile Include="Components/UnusedDeclarations.fs" />
+    <Compile Include="Components/SimplifyName.fs" />
+    <Compile Include="Components/CodeLens.fs" />
+    <Compile Include="Components/QuickFix.fs" />
+    <Compile Include="Components/ResolveNamespaces.fs" />
+    <Compile Include="Components/UnionCaseGenerator.fs" />
+    <Compile Include="Components/Errors.fs" />
+    <Compile Include="Components/LineLens.fs" />
+    <Compile Include="Components/QuickInfo.fs" />
+    <Compile Include="Components/Expecto.fs" />
+    <Compile Include="Components/MSBuild.fs" />
+    <Compile Include="Components/Help.fs" />
+    <Compile Include="Components/Degugger.fs" />
+    <Compile Include="Components/VsCodeIconTheme.fs" />
+    <Compile Include="Components/SolutionExplorer.fs" />
     <Compile Include="fsharp.fs" />
   </ItemGroup>
-  <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\4.0\Framework\v4.0\Microsoft.FSharp.Targets" />
+  <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

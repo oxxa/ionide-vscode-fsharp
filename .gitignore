@@ -1,6 +1,7 @@
 release/bin
 release/bin_ff
 release/bin_forge
+release/bin_profiler
 
 # Logs
 logs
@@ -31,21 +32,18 @@ node_modules
 # Users Environment Variables
 .lock-wscript
 *.suo
-Test/
 Test/obj/
 Test/bin/
 .paket/paket.exe
 paket-files
 packages
-Test/Script.fsx
-Test/Script.fsx
 typings/FunScript.TypeScript/Output
 typings/FunScript.TypeScript/Types.zip
 typings/FunScript.TypeScript/*.txt
 
 .DS_Store
-src/bin/
-src/obj/
+src/**/bin/
+src/**/obj/
 *.userprefs
 src/paket/bin/paket.exe
 src/core/lib/core.js
@@ -59,6 +57,8 @@ src/atom-fsharp/lib/fsharp.js
 src/atom-fsharp/bin-fantomas/
 release/syntaxes
 release/templates
+release/schemas
+release_test/bin
 
 temp
 .fake
@@ -67,5 +67,9 @@ temp
 *.js.map
 .orig
 release.cmd
+release-preview.cmd
 paket-files
 issueList.md
+release/package-lock\.json
+*.vsix
+/release/bin_netcore/

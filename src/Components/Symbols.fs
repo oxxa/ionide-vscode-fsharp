@@ -2,14 +2,18 @@ namespace Ionide.VSCode.FSharp
 
 open System
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.vscode
 open Fable.Import.Node
-
+open Fable.Core.JsInterop
 open DTO
+open Ionide.VSCode
 open Ionide.VSCode.Helpers
 
 module Symbols =
+
+
     let private createProvider () =
 
         let convertToKind code =
@@ -23,21 +27,18 @@ module Symbols =
             | "P" -> SymbolKind.Property      (*  CompletionItemKind.Property   *)
             | "F" -> SymbolKind.Variable     (*  CompletionItemKind.Field      *)
             | "T" -> SymbolKind.Class      (*  CompletionItemKind.Class      *)
+            | "Fc" -> SymbolKind.Function
             | _   -> 0 |> unbox
 
         let mapRes (doc : TextDocument) o =
-             if o |> unbox <> null then
+             if isNotNull o then
                 o.Data |> Array.map (fun syms ->
                     let oc = createEmpty<SymbolInformation>
                     oc.name <- syms.Declaration.Name
                     oc.kind <- syms.Declaration.GlyphChar |> convertToKind
                     oc.containerName <- syms.Declaration.Glyph
                     let loc = createEmpty<Location>
-                    loc.range <-  Range
-                                ( float syms.Declaration.BodyRange.StartLine   - 1.,
-                                    float syms.Declaration.BodyRange.StartColumn - 1.,
-                                    float syms.Declaration.BodyRange.EndLine     - 1.,
-                                    float syms.Declaration.BodyRange.EndColumn   - 1.)
+                    loc.range <- CodeRange.fromDTO syms.Declaration.BodyRange
                     loc.uri <- Uri.file doc.fileName
                     oc.location <- loc
                     let ocs =  syms.Nested |> Array.map (fun sym ->
@@ -46,11 +47,7 @@ module Symbols =
                         oc.kind <- sym.GlyphChar |> convertToKind
                         oc.containerName <- sym.Glyph
                         let loc = createEmpty<Location>
-                        loc.range <-  Range
-                                    ( float sym.BodyRange.StartLine   - 1.,
-                                        float sym.BodyRange.StartColumn - 1.,
-                                        float sym.BodyRange.EndLine     - 1.,
-                                        float sym.BodyRange.EndColumn   - 1.)
+                        loc.range <- CodeRange.fromDTO sym.BodyRange
                         loc.uri <- Uri.file doc.fileName
                         oc.location <- loc
                         oc )
@@ -62,13 +59,14 @@ module Symbols =
           with
             member this.provideDocumentSymbols(doc, ct) =
                 promise {
-                    let! o = LanguageService.declarations doc.fileName
+                    let text = doc.getText()
+                    let! o = LanguageService.declarations doc.fileName text (unbox doc.version)
                     let data = mapRes doc o
                     return data |> ResizeArray
-                } |> Case2
+                } |> U2.Case2
         }
 
-    let activate selector (disposables: Disposable[]) =
+    let activate selector (context: ExtensionContext) =
         languages.registerDocumentSymbolProvider(selector, createProvider())
-        |> ignore
+        |> context.subscriptions.Add
         ()

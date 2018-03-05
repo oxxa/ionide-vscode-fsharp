@@ -2,8 +2,8 @@
 // FAKE build script
 // --------------------------------------------------------------------------------------
 
-#I "packages/FAKE/tools"
-#r "packages/FAKE/tools/FakeLib.dll"
+#I "packages/build/FAKE/tools"
+#r "FakeLib.dll"
 open System
 open System.Diagnostics
 open System.IO
@@ -11,8 +11,8 @@ open Fake
 open Fake.Git
 open Fake.ProcessHelper
 open Fake.ReleaseNotesHelper
+open Fake.YarnHelper
 open Fake.ZipHelper
-
 
 
 // Git configuration (used for publishing documentation in gh-pages branch)
@@ -38,7 +38,6 @@ let release = List.head releaseNotesData
 let msg =  release.Notes |> List.fold (fun r s -> r + s + "\n") ""
 let releaseMsg = (sprintf "Release %s\n" release.NugetVersion) + msg
 
-
 let run cmd args dir =
     if execProcess( fun info ->
         info.FileName <- cmd
@@ -46,26 +45,27 @@ let run cmd args dir =
             info.WorkingDirectory <- dir
         info.Arguments <- args
     ) System.TimeSpan.MaxValue = false then
-        traceError <| sprintf "Error while running '%s' with args: %s" cmd args
+        failwithf "Error while running '%s' with args: %s" cmd args
+
+
+let platformTool tool path =
+    match isUnix with
+    | true -> tool
+    | _ ->  match ProcessHelper.tryFindFileOnPath path with
+            | None -> failwithf "can't find tool %s on PATH" tool
+            | Some v -> v
 
 let npmTool =
-    match isUnix with
-    | true -> "npm" // Use the npm that is in PATH
-    | _ -> __SOURCE_DIRECTORY__ </> "packages/Npm.js/tools/npm.cmd"
+    platformTool "npm"  "npm.cmd"
 
-let vsceTool =
-    #if MONO
-        "vsce"
-    #else
-        "packages" </> "Node.js" </> "vsce.cmd" |> FullName
-    #endif
+let vsceTool = lazy (platformTool "vsce" "vsce.cmd")
 
-let codeTool =
-    #if MONO
-        "code"
-    #else
-        ProgramFilesX86  </> "Microsoft VS Code" </> "bin/code.cmd"
-    #endif
+
+let releaseBin      = "release/bin"
+let fsacBin         = "paket-files/github.com/fsharp/FsAutoComplete/bin/release"
+
+let releaseBinNetcore = releaseBin + "_netcore" 
+let fsacBinNetcore = fsacBin + "_netcore"
 
 // --------------------------------------------------------------------------------------
 // Build the Generator project and run it
@@ -73,40 +73,71 @@ let codeTool =
 
 Target "Clean" (fun _ ->
     CleanDir "./temp"
-    CopyFiles "release" ["README.md"; "LICENSE.md"; "RELEASE_NOTES.md"]
+    CopyFiles "release" ["README.md"; "LICENSE.md"]
+    CopyFile "release/CHANGELOG.md" "RELEASE_NOTES.md"
 )
 
-Target "RunScript" (fun () ->
-    run npmTool "install" "release"
-    run npmTool "run build" "release"
+Target "YarnInstall" <| fun () ->
+    Yarn (fun p -> { p with Command = Install Standard })
+
+Target "DotNetRestore" <| fun () ->
+    DotNetCli.Restore (fun p -> { p with WorkingDir = "src" } )
+
+let runFable additionalArgs noTimeout =
+    let cmd = "fable webpack -- --config webpack.config.js " + additionalArgs
+    let timeout = if noTimeout then TimeSpan.MaxValue else TimeSpan.FromMinutes 30.
+    DotNetCli.RunCommand (fun p -> { p with WorkingDir = "src"; TimeOut = timeout } ) cmd
+
+Target "RunScript" (fun _ ->
+    // Ideally we would want a production (minized) build but UglifyJS fail on PerMessageDeflate.js as it contains non-ES6 javascript.
+    runFable "" false
 )
 
-
-let releaseBin  = "release/bin"
-let fsacBin     = "paket-files/github.com/ionide/FsAutoComplete/bin/release"
-
+Target "Watch" (fun _ ->
+    runFable "--watch" true
+)
 
 Target "CopyFSAC" (fun _ ->
     ensureDirectory releaseBin
     CleanDir releaseBin
 
     !! (fsacBin + "/*")
-    |> CopyFiles  releaseBin
+    |> CopyFiles releaseBin
 )
 
-let releaseBinForge = "release/bin_forge"
-let forgeBin = "paket-files/github.com/fsprojects/Forge/temp/bin"
+Target "CopyFSACNetcore" (fun _ ->
+    ensureDirectory releaseBinNetcore
+    CleanDir releaseBinNetcore
+
+    !! (fsacBinNetcore + "/*")
+    |> CopyFiles releaseBinNetcore
+)
+
+let releaseForge = "release/bin_forge"
+let releaseBinForge = "release/bin_forge/bin"
+
+let forgeBin = "paket-files/github.com/fsharp-editing/Forge/temp/Bin/*.dll"
+let forgeExe = "paket-files/github.com/fsharp-editing/Forge/temp/Forge.exe"
+let forgeConfig = "paket-files/github.com/fsharp-editing/Forge/temp/Forge.exe.config"
+
 
 Target "CopyForge" (fun _ ->
     ensureDirectory releaseBinForge
-    CleanDir releaseBinForge
+    ensureDirectory releaseForge
 
-    !! (forgeBin </> "Forge.exe" )
-    ++ (forgeBin </> "Mono.Posix.dll")
+    CleanDir releaseBinForge
+    checkFileExists forgeExe
+    !! forgeExe
+    ++ forgeConfig
+    |> CopyFiles releaseForge
+
+    !! forgeBin
     |> CopyFiles releaseBinForge
+
+
 )
 
-let fsgrammarDir = "paket-files/github.com/ionide/ionide-fsgrammar"
+let fsgrammarDir = "paket-files/github.com/ionide/ionide-fsgrammar/grammar"
 let fsgrammarRelease = "release/syntaxes"
 
 
@@ -121,6 +152,15 @@ Target "CopyGrammar" (fun _ ->
     ]
 )
 
+
+let fsschemaDir = "schemas"
+
+let fsschemaRelease = "release/schemas"
+Target "CopySchemas" (fun _ ->
+    ensureDirectory fsschemaRelease
+    CleanDir fsschemaRelease
+    CopyFile fsschemaRelease (fsschemaDir </> "fableconfig.json")
+)
 
 
 Target "InstallVSCE" ( fun _ ->
@@ -142,14 +182,9 @@ Target "SetVersion" (fun _ ->
 
 Target "BuildPackage" ( fun _ ->
     killProcess "vsce"
-    run vsceTool "package" "release"
+    run vsceTool.Value "package" "release"
     !! "release/*.vsix"
     |> Seq.iter(MoveFile "./temp/")
-)
-
-Target "TryPackage"(fun _ ->
-    killProcess "code"
-    run codeTool (sprintf "./temp/Ionide-fsharp-%s.vsix" release.NugetVersion) ""
 )
 
 
@@ -160,10 +195,10 @@ Target "PublishToGallery" ( fun _ ->
         | _ -> getUserPassword "VSCE Token: "
 
     killProcess "vsce"
-    run vsceTool (sprintf "publish --pat %s" token) "release"
+    run vsceTool.Value (sprintf "publish --pat %s" token) "release"
 )
 
-#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 open Octokit
 
 
@@ -208,6 +243,9 @@ Target "Default" DoNothing
 Target "Build" DoNothing
 Target "Release" DoNothing
 
+"YarnInstall" ?=> "RunScript"
+"DotNetRestore" ?=> "RunScript"
+
 "Clean"
 ==> "RunScript"
 ==> "Default"
@@ -215,20 +253,21 @@ Target "Release" DoNothing
 "Clean"
 ==> "RunScript"
 ==> "CopyFSAC"
+==> "CopyFSACNetcore"
 ==> "CopyForge"
 ==> "CopyGrammar"
+==> "CopySchemas"
 ==> "Build"
+
+"YarnInstall" ==> "Build"
+"DotNetRestore" ==> "Build"
 
 "Build"
 ==> "SetVersion"
-==> "InstallVSCE"
+// ==> "InstallVSCE"
 ==> "BuildPackage"
 ==> "ReleaseGitHub"
 ==> "PublishToGallery"
 ==> "Release"
-
-
-"BuildPackage"
-==> "TryPackage"
 
 RunTargetOrDefault "Default"

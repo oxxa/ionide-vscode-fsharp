@@ -2,6 +2,7 @@ namespace Ionide.VSCode.FSharp
 
 open System
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.vscode
 open Fable.Import.Node
@@ -15,40 +16,41 @@ module ParameterHints =
 
         let mapResult o =
             let res = SignatureHelp ()
-            let sigs = o.Data.Overloads |> Array.choose (fun c ->
-                try
-                    let tip = c.Tip.[0].[0]
-                    let signature = SignatureInformation (tip.Signature, tip.Comment)
-                    c.Parameters |> Array.iter (fun p ->
-                        let parameter = ParameterInformation (p.Name, p.CanonicalTypeTextForSorting)
-                        signature.parameters.Add (parameter )
-                        |> ignore
-                    )
-                    Some signature
-                with 
-                | e -> None) |> ResizeArray
-            res.activeParameter <- float (o.Data.CurrentParameter)
-            res.activeSignature <- 
-                sigs 
-                |> Seq.sortBy (fun n -> n.parameters.Count) 
-                |> Seq.findIndex (fun s -> s.parameters.Count >= o.Data.CurrentParameter ) 
-                |> (+) 1
-                |> float
-            res.signatures <- sigs
+            if isNotNull o then
+                let sigs = o.Data.Overloads |> Array.choose (fun c ->
+                    try
+                        let tip = c.Tip.[0].[0]
+                        let signature = SignatureInformation (tip.Signature, U2.Case1 tip.Comment)
+                        c.Parameters |> Array.iter (fun p ->
+                            let parameter = ParameterInformation (p.Name, U2.Case1 p.CanonicalTypeTextForSorting)
+                            signature.parameters.Add (parameter )
+                            |> ignore
+                        )
+                        Some signature
+                    with
+                    | e -> None) |> ResizeArray
+                res.activeParameter <- float (o.Data.CurrentParameter)
+                res.activeSignature <-
+                    sigs
+                    |> Seq.sortBy (fun n -> n.parameters.Count)
+                    |> Seq.findIndex (fun s -> s.parameters.Count >= o.Data.CurrentParameter )
+                    |> (+) 1
+                    |> float
+                res.signatures <- sigs
             res
 
-        { new SignatureHelpProvider 
+        { new SignatureHelpProvider
           with
-            member this.provideSignatureHelp(doc,pos, ct) = 
+            member this.provideSignatureHelp(doc,pos, ct) =
                 promise {
-                   let! _ = LanguageService.parse doc.fileName (doc.getText ())
+                   let! _ = LanguageService.parse doc.fileName (doc.getText ()) doc.version
                    let! res = LanguageService.methods (doc.fileName) (int pos.line + 1) (int pos.character + 1)
                    return mapResult res
 
-                } |> Case2 }
+                } |> U2.Case2 }
 
-    let activate selector (disposables: Disposable[]) =
+    let activate selector (context: ExtensionContext) =
         languages.registerSignatureHelpProvider(selector, createProvider(), "(", ",")
-        |> ignore
+        |> context.subscriptions.Add
 
         ()

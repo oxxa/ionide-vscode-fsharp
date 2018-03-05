@@ -2,9 +2,12 @@ namespace Ionide.VSCode.FSharp
 
 open System
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.vscode
 open Fable.Import.Node
+
+
 
 open DTO
 open Ionide.VSCode.Helpers
@@ -13,12 +16,12 @@ module Highlights =
     let private createProvider () =
 
         let mapResult (o : SymbolUseResult) =
-            if o |> unbox <> null then
+            if isNotNull o then
                 o.Data.Uses |> Array.map (fun d ->
                     let res = createEmpty<DocumentHighlight>
-                    res.range <- Range(float d.StartLine - 1., float d.StartColumn - 1., float d.EndLine - 1., float d.EndColumn - 1.)
-                    res.kind <- (0 |> unbox)
-                    res )
+                    res.range <- CodeRange.fromSymbolUse d
+                    res.kind <- unbox 0
+                    res)
                 |> ResizeArray
             else
                 ResizeArray ()
@@ -30,11 +33,11 @@ module Highlights =
                 promise {
                     let! res = LanguageService.symbolUse (doc.fileName) (int pos.line + 1) (int pos.character + 1)
                     return mapResult res
-                } |> Case2
+                } |> U2.Case2
         }
 
-    let activate selector (disposables: Disposable[]) =
+    let activate selector (context: ExtensionContext) =
         languages.registerDocumentHighlightProvider(selector, createProvider())
-        |> ignore
+        |> context.subscriptions.Add
 
         ()

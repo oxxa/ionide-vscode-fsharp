@@ -2,44 +2,52 @@ namespace Ionide.VSCode.FSharp
 
 open System
 open Fable.Core
-open Fable.Import
+open Fable.Core.JsInterop
 open Fable.Import.vscode
-open Fable.Import.Node
-
 open DTO
 open Ionide.VSCode.Helpers
 
 module Tooltip =
-
     let private createProvider () =
-
-
         let mapResult (doc : TextDocument) (pos : Position) o =
             let range = doc.getWordRangeAtPosition pos
-            if o |> unbox <> null then
-                let res = (o.Data |> Array.fold (fun acc n -> (n |> Array.toList) @ acc ) []).Head
+            if isNotNull o then
+                let res = (o.Data |> Array.collect id).[0]
                 if JS.isDefined res.Signature then
                     let markStr lang (value:string) : MarkedString =
                         createObj [
                             "language" ==> lang
                             "value" ==> value.Trim()
-                        ] |> Case2
+                        ] |> U3.Case3
+
+                    let fsharpBlock (lines: string[]) : MarkedString =
+                        lines |> String.concat "\n" |> markStr "fsharp"
+
                     let sigContent =
-                        res.Signature.Split('\n')
-                        |> Array.filter(String.IsNullOrWhiteSpace>>not)
-                        |> Array.map (markStr "fsharp")
+                        let lines =
+                            res.Signature
+                            |> String.split [|'\n'|]
+                            |> Array.filter (not << String.IsNullOrWhiteSpace)
+
+                        match lines |> Array.splitAt (lines.Length - 1) with
+                        | (h, [| StartsWith "Full name:" fullName |]) ->
+                            [| yield fsharpBlock h
+                               yield U3.Case1 (MarkdownString("*").appendText(fullName).appendMarkdown("*")) |]
+                        | _ -> [| fsharpBlock lines |]
+
                     let commentContent =
-                        res.Comment.Split('\n')
-                        |> Array.filter(String.IsNullOrWhiteSpace>>not)
-                        |> Array.mapi (fun i n ->
-                            let v =
-                                if i = 0 && not(String.IsNullOrWhiteSpace n)
-                                then "\n" + n.Trim()
-                                else n.Trim()
-                            markStr "markdown" v)
+                        res.Comment
+                        |> Markdown.createCommentBlock
+                        |> U3.Case1
+                    let footerContent =
+                        res.Footer
+                        |> String.split [|'\n' |]
+                        |> Array.filter (not << String.IsNullOrWhiteSpace)
+                        |> Array.map (fun n -> U3.Case1 (MarkdownString("*").appendText(n).appendMarkdown("*")))
+
                     let result = createEmpty<Hover>
                     result.range <- range
-                    result.contents <- Array.append sigContent commentContent |> ResizeArray
+                    result.contents <- Array.append sigContent [| yield commentContent; yield! footerContent |] |> ResizeArray
                     result
                 else
                     createEmpty<Hover>
@@ -50,13 +58,13 @@ module Tooltip =
           with
             member this.provideHover(doc, pos, _ ) =
                 promise {
-                    let! res = LanguageService.tooltip (doc.fileName) (int pos.line + 1) (int pos.character + 1)
+                    let! res = LanguageService.tooltip doc.fileName (int pos.line + 1) (int pos.character + 1)
                     return mapResult doc pos res
-                } |> Case2
+                } |> U2.Case2
 
         }
 
-    let activate selector (disposables: Disposable[]) =
+    let activate selector (context: ExtensionContext) =
         languages.registerHoverProvider(selector, createProvider())
-        |> ignore
+        |> context.subscriptions.Add
         ()

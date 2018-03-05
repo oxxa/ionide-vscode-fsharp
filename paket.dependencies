@@ -1,19 +1,26 @@
-source https://nuget.org/api/v2
+source https://www.nuget.org/api/v2
+storage:none
 
-git https://github.com/ionide/ionide-vscode-helpers.git master build:"build.cmd", OS: windows
-git https://github.com/ionide/FsAutoComplete.git keywords build:"build.cmd LocalRelease", OS: windows
-git https://github.com/fsprojects/Forge.git master build:"build.cmd", OS: windows
+clitool dotnet-fable 1.2.4
+nuget Fable.Core 1.2.4
+nuget Fable.Import.Node 0.1.5
+nuget Fable.Import.Browser 0.1.2
 
-git https://github.com/ionide/ionide-vscode-helpers.git master build:"build.sh", OS: mono
-git https://github.com/ionide/FsAutoComplete.git keywords build:"build.sh LocalRelease", OS: mono
-git https://github.com/fsprojects/Forge.git master build:"build.sh", OS: mono
+git https://github.com/fsharp/FsAutoComplete.git master build:"build.cmd LocalRelease", OS: windows
+git https://github.com/fsharp-editing/Forge.git master build:"build.cmd Build", OS: windows
+
+git https://github.com/fsharp/FsAutoComplete.git master build:"build.sh LocalRelease", OS: mono
+git https://github.com/fsharp-editing/Forge.git master build:"build.sh Build", OS: mono
 
 git https://github.com/ionide/ionide-fsgrammar.git
 
-nuget FAKE
-nuget Npm.js
+github ionide/ionide-vscode-helpers src/Fable.Import.VSCode.fs
+github ionide/ionide-vscode-helpers src/Helpers.fs
+github ionide/ionide-vscode-helpers src/Fable.Import.Axios.fs
+github ionide/ionide-vscode-helpers src/Fable.Import.ws.fs
 
-github fsharp/FAKE modules/Octokit/Octokit.fsx
-github Ionide/ionide-vscode-helpers:fable Fable.Import.VSCode.fs
-github Ionide/ionide-vscode-helpers:fable Helpers.fs
-github Ionide/ionide-vscode-helpers:fable Fable.Import.Axios.fs
+group build
+    source https://www.nuget.org/api/v2
+
+    github fsharp/FAKE modules/Octokit/Octokit.fsx
+    nuget Fake

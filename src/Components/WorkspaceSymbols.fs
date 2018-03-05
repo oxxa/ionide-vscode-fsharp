@@ -2,6 +2,7 @@ namespace Ionide.VSCode.FSharp
 
 open System
 open Fable.Core
+open Fable.Core.JsInterop
 open Fable.Import
 open Fable.Import.vscode
 open Fable.Import.Node
@@ -26,21 +27,17 @@ module WorkspaceSymbols =
             | _   -> 0 |> unbox
 
         let relative f =
-            path.relative (workspace.rootPath, f)
+            Path.relative (workspace.rootPath, f)
 
         let mapRes o =
-             if o |> unbox <> null then
+             if isNotNull o then
                 o.Data |> Array.map (fun syms ->
                     let oc = createEmpty<SymbolInformation>
                     oc.name <- syms.Declaration.Name
                     oc.kind <- syms.Declaration.GlyphChar |> convertToKind
                     oc.containerName <- relative syms.Declaration.File
                     let loc = createEmpty<Location>
-                    loc.range <-  Range
-                                ( float syms.Declaration.BodyRange.StartLine   - 1.,
-                                    float syms.Declaration.BodyRange.StartColumn - 1.,
-                                    float syms.Declaration.BodyRange.EndLine     - 1.,
-                                    float syms.Declaration.BodyRange.EndColumn   - 1.)
+                    loc.range <- CodeRange.fromDTO syms.Declaration.BodyRange
                     loc.uri <- Uri.file syms.Declaration.File
                     oc.location <- loc
                     let ocs =  syms.Nested |> Array.map (fun sym ->
@@ -49,11 +46,7 @@ module WorkspaceSymbols =
                         oc.kind <- sym.GlyphChar |> convertToKind
                         oc.containerName <- relative sym.File
                         let loc = createEmpty<Location>
-                        loc.range <-  Range
-                                    ( float sym.BodyRange.StartLine   - 1.,
-                                        float sym.BodyRange.StartColumn - 1.,
-                                        float sym.BodyRange.EndLine     - 1.,
-                                        float sym.BodyRange.EndColumn   - 1.)
+                        loc.range <- CodeRange.fromDTO sym.BodyRange
                         loc.uri <- Uri.file sym.File
                         oc.location <- loc
                         oc )
@@ -61,17 +54,16 @@ module WorkspaceSymbols =
                 else
                     [||]
 
-
         { new WorkspaceSymbolProvider
           with
             member this.provideWorkspaceSymbols(q, ct) =
                 promise {
                     let! o = LanguageService.declarationsProjects ()
                     return mapRes o |> ResizeArray
-                } |> Case2
+                } |> U2.Case2
         }
 
-    let activate selector (disposables: Disposable[]) =
+    let activate selector (context: ExtensionContext) =
         languages.registerWorkspaceSymbolProvider(createProvider())
-        |> ignore
+        |> context.subscriptions.Add
         ()
